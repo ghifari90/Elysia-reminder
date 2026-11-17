@@ -12,17 +12,44 @@ services:
       TZ: ${TZ}
 
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-7000}:7000"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
 
     volumes:
-      - postgres_data:/var/lib/postgres/data
+      - postgres_data:/var/lib/postgresql/data
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    
+    networks:
+      - meja_kuliah_net
+
+  api:
+    build:
+      context: ./meja_kuliah_BE
+      dockerfile: Dockerfile.dev # development (prod= Dockerfile)
+    container_name: meja_kuliah_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development # production
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # Nanti kalau sudah pakai database, tambahkan ini:
+      # DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TZ: ${TZ}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - meja_kuliah_net
+
 volumes:
   postgres_data:
     name: meja_kuliah_postgres_data
+
+networks:
+  meja_kuliah_net:
+    driver: bridge
